@@ -35,8 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.location.Geocoder
 import androidx.core.content.ContextCompat
 import android.location.Location
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -65,6 +69,9 @@ data class Sinyal(
     val userId: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
+    val isimSoyisim: String = "",
+    val telefon: String = "",
+    val adres: String = "",
     val aciklama: String = "",
     val photoUri: String? = null,
     val durum: String = "İnceleniyor", // İnceleniyor, Bildirildi, Çözüldü
@@ -466,6 +473,11 @@ fun HaritaEkrani(onComplete: () -> Unit) {
 
     // Form
     var yorum by remember { mutableStateOf("") }
+    var isimSoyisim by remember { mutableStateOf("") }
+    var telefon by remember { mutableStateOf("") }
+    var addressText by remember { mutableStateOf("Adres tespit ediliyor...") }
+    var isAddressResolved by remember { mutableStateOf(false) }
+    var failedAddressRetries by remember { mutableStateOf(0) }
     var photoUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val karsiyakaMerkez = LatLng(38.4552, 27.1235)
@@ -507,6 +519,25 @@ fun HaritaEkrani(onComplete: () -> Unit) {
         }
     }
 
+    fun resolveAddress(lat: Double, lng: Double, onResult: (String?) -> Unit) {
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val geocoder = Geocoder(context, Locale.getDefault())
+                    val addresses = geocoder.getFromLocation(lat, lng, 1)
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        address.getAddressLine(0) ?: address.thoroughfare ?: "${lat.toString().take(7)}, ${lng.toString().take(7)}"
+                    } else null
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
+            }
+            onResult(result)
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -517,6 +548,21 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                 fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
                     if (location != null) {
                         currentLocation = LatLng(location.latitude, location.longitude)
+
+                        addressText = "Adres tespit ediliyor..."
+                        isAddressResolved = false
+                        failedAddressRetries = 0
+
+                        resolveAddress(location.latitude, location.longitude) { address ->
+                            if (address != null) {
+                                addressText = address
+                                isAddressResolved = true
+                            } else {
+                                addressText = "Adres alınamadı. (Hata: İnternet veya Servis)"
+                                failedAddressRetries++
+                            }
+                        }
+
                         showSheet = true
                     } else {
                         Toast.makeText(context, "Konum alınamadı, lütfen GPS'i kontrol edin.", Toast.LENGTH_SHORT).show()
@@ -559,7 +605,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
             haritaSinyalleri.forEach { sinyal ->
                 Marker(
                     state = MarkerState(position = LatLng(sinyal.lat, sinyal.lng)),
-                    title = "Sinyal: ${sinyal.durum}",
+                    title = "Durum: ${sinyal.durum} | Adres: ${if(sinyal.adres.isNotBlank()) sinyal.adres else "Bilinmiyor"}",
                     snippet = sinyal.aciklama,
                     icon = yelkenliIcon
                 )
@@ -593,9 +639,54 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                     Text("Detayları Bildir", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
 
                     Text(
-                        text = "Konumunuz otomatik olarak alındı.\nEnlem: ${currentLocation?.latitude?.toString()?.take(7)} Boylam: ${currentLocation?.longitude?.toString()?.take(7)}",
+                        text = "Konum: $addressText",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = if (isAddressResolved) MaterialTheme.colorScheme.primary else Color.Red
+                    )
+
+                    if (!isAddressResolved && failedAddressRetries < 3) {
+                        Button(onClick = {
+                            addressText = "Tekrar deneniyor..."
+                            currentLocation?.let { loc ->
+                                resolveAddress(loc.latitude, loc.longitude) { address ->
+                                    if (address != null) {
+                                        addressText = address
+                                        isAddressResolved = true
+                                    } else {
+                                        failedAddressRetries++
+                                        addressText = "Adres alınamadı. (Hata: İnternet veya Servis)"
+                                    }
+                                }
+                            }
+                        }) {
+                            Text("Adresi Tekrar Almayı Dene ($failedAddressRetries/3)")
+                        }
+                    } else if (!isAddressResolved && failedAddressRetries >= 3) {
+                         Text(
+                             text = "Adres alınamadı ancak Enlem/Boylam ile bildirime devam edebilirsiniz.",
+                             style = MaterialTheme.typography.bodySmall,
+                             color = Color.Gray
+                         )
+                    }
+
+                    OutlinedTextField(
+                        value = isimSoyisim,
+                        onValueChange = { isimSoyisim = it },
+                        label = { Text("İsim Soyisim*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = telefon,
+                        onValueChange = {
+                             if (it.length <= 10 && it.all { char -> char.isDigit() }) {
+                                 telefon = it
+                             }
+                        },
+                        label = { Text("Telefon Numarası (Başında 0 olmadan 10 Hane)*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     // Fotoğraf Alanı
@@ -632,8 +723,14 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                     var isSubmitting by remember { mutableStateOf(false) }
                     Button(
                         onClick = {
-                            if (yorum.length < 20) {
+                            if (isimSoyisim.isBlank()) {
+                                Toast.makeText(context, "Lütfen İsim Soyisim girin.", Toast.LENGTH_SHORT).show()
+                            } else if (telefon.length != 10) {
+                                Toast.makeText(context, "Lütfen 10 haneli telefon numarasını girin.", Toast.LENGTH_SHORT).show()
+                            } else if (yorum.length < 20) {
                                 Toast.makeText(context, "Lütfen en az 20 karakterlik açıklama girin.", Toast.LENGTH_SHORT).show()
+                            } else if (!isAddressResolved && failedAddressRetries < 3) {
+                                Toast.makeText(context, "Adresiniz belirlenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.", Toast.LENGTH_SHORT).show()
                             } else {
                                 isSubmitting = true
                                 coroutineScope.launch {
@@ -651,6 +748,9 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             userId = userId,
                                             lat = currentLocation?.latitude ?: 0.0,
                                             lng = currentLocation?.longitude ?: 0.0,
+                                            isimSoyisim = isimSoyisim,
+                                            telefon = telefon,
+                                            adres = addressText,
                                             aciklama = yorum,
                                             photoUri = uploadedImageUrl
                                         )
@@ -663,6 +763,8 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                         flashLightEffect(context, coroutineScope)
                                         showSheet = false
                                         yorum = ""
+                                        isimSoyisim = ""
+                                        telefon = ""
                                         photoUri = null
                                     } catch (e: Exception) {
                                         Log.e("FirebaseUpload", "Upload hatasi", e)
@@ -734,8 +836,9 @@ fun TakipEkrani() {
                     "Bildirildi" -> Color(0xFF03A9F4)
                     else -> Color(0xFFFFA000)
                 }
+                val konumMetni = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat.toString().take(7)}, ${sinyal.lng.toString().take(7)}"
                 BildirimKarti(
-                    konum = "Enlem: ${sinyal.lat.toString().take(6)}...",
+                    konum = konumMetni,
                     sorun = sinyal.aciklama,
                     durum = sinyal.durum,
                     adminMesaji = sinyal.adminCevap.ifEmpty { "Henüz yanıtlanmadı." },
@@ -813,9 +916,15 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Konum: ${sinyal.lat}, ${sinyal.lng}", fontSize = 12.sp, color = Color.Gray)
+            Text("Bildiren: ${sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("Telefon: ${sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontSize = 14.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Sorun: ${sinyal.aciklama}", fontWeight = FontWeight.Bold)
+
+            val konumMetni = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
+            Text("Adres: $konumMetni", fontSize = 13.sp, color = Color.DarkGray)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text("Sorun: ${sinyal.aciklama}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(8.dp))
 
             if (sinyal.photoUri != null) {
