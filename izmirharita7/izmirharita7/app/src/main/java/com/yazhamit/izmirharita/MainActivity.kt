@@ -9,6 +9,7 @@ import android.hardware.camera2.CameraManager
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -116,10 +117,47 @@ fun UygulamaNavigasyonu() {
     var mevcutEkran by remember { mutableStateOf(Ekran.LOBI) }
     var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
     val context = LocalContext.current
+    val activity = context as? Activity
     val coroutineScope = rememberCoroutineScope()
 
     // Admin giriş dialog kontrolü
     var showAdminDialog by remember { mutableStateOf(false) }
+    // Çıkış onay dialog kontrolü
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Geri Tuşu (Back Button) Davranışı
+    BackHandler {
+        if (mevcutEkran != Ekran.LOBI) {
+            mevcutEkran = Ekran.LOBI
+        } else {
+            showExitDialog = true
+        }
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Uygulamadan Çık") },
+            text = { Text("Uygulamadan çıkmak istiyor musunuz?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        activity?.finish()
+                    }
+                ) {
+                    Text("Evet")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showExitDialog = false }
+                ) {
+                    Text("Hayır")
+                }
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         // Üst Bar - Profil Durumu
