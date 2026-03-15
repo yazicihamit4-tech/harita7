@@ -956,8 +956,41 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Button(onClick = { onGuncelle(sinyal.id, seciliDurum, cevap) }) {
-                Text("Güncelle ve İlet")
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Button(onClick = { onGuncelle(sinyal.id, seciliDurum, cevap) }) {
+                    Text("Durumu Güncelle")
+                }
+
+                val context = LocalContext.current
+                Button(
+                    onClick = {
+                        val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
+                        val tel = sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
+                        val adres = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
+                        val fotoUrl = sinyal.photoUri ?: "Yok"
+
+                        val mesaj = "YENİ İHBAR\n\n" +
+                                "Bildiren: $adSoyad\n" +
+                                "Telefon: $tel\n" +
+                                "Adres: $adres\n" +
+                                "Açıklama: ${sinyal.aciklama}\n" +
+                                "Fotoğraf: $fotoUrl"
+
+                        val encodedMessage = java.net.URLEncoder.encode(mesaj, "UTF-8")
+                        val whatsappUri = android.net.Uri.parse("https://wa.me/905301251355?text=$encodedMessage")
+                        val intent = Intent(Intent.ACTION_VIEW, whatsappUri)
+
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "WhatsApp cihazda yüklü değil veya bulunamadı.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // WhatsApp Yeşili
+                ) {
+                    Text("Belediyeye İlet (WhatsApp)", color = Color.White)
+                }
             }
         }
     }
