@@ -635,15 +635,13 @@ fun HaritaEkrani(onComplete: () -> Unit) {
         if (showSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
-                sheetState = sheetState,
-                // Ekran içi padding ayarları eklenerek IME kaynaklı yeni scroll ofseti hatası önleniyor
-                windowInsets = WindowInsets.ime
+                sheetState = sheetState
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .padding(bottom = 32.dp) // Klavye açılışı için ekstra tampon alan
+                        .padding(bottom = 64.dp) // Klavye açılışı için ekstra tampon alan
                         .imePadding()
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
