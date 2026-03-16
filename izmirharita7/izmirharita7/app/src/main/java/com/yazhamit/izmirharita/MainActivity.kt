@@ -715,7 +715,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                     OutlinedTextField(
                         value = yorum,
                         onValueChange = { yorum = it },
-                        label = { Text("Sorunu detaylı açıklayın (En az 20 karakter)*") },
+                        label = { Text("Lütfen sorunu tam, açık, anlaşılır ve nazik bir dille yazın (En az 20 karakter)*") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 4
                     )
