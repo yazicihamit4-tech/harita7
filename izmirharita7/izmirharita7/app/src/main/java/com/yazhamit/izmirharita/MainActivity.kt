@@ -14,6 +14,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,6 +68,8 @@ import java.net.URL
 import java.net.HttpURLConnection
 import org.json.JSONObject
 import java.io.OutputStreamWriter
+import java.text.SimpleDateFormat
+import java.util.Date
 
 // Model Sınıfı
 data class Sinyal(
@@ -998,6 +1001,7 @@ fun AdminEkrani() {
 
 @Composable
 fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> Unit) {
+    var isExpanded by remember { mutableStateOf(false) }
     var cevap by remember(sinyal.adminCevap) { mutableStateOf(sinyal.adminCevap) }
     var seciliDurum by remember(sinyal.durum) { mutableStateOf(sinyal.durum) }
     val durumlar = listOf("İnceleniyor", "Bildirildi", "Çözüldü")
@@ -1005,14 +1009,51 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp)
+            .clickable(onClick = { isExpanded = !isExpanded }),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Bildiren: ${sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text("Telefon: ${sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(4.dp))
+        if (!isExpanded) {
+            val dateStr = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(Date(sinyal.timestamp))
+            val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("$dateStr - $adSoyad", fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = when (sinyal.durum) {
+                        "Çözüldü" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                        "Bildirildi" -> Color(0xFF03A9F4).copy(alpha = 0.2f)
+                        else -> Color(0xFFFFA000).copy(alpha = 0.2f)
+                    }
+                ) {
+                    Text(
+                        text = sinyal.durum,
+                        color = when (sinyal.durum) {
+                            "Çözüldü" -> Color(0xFF4CAF50)
+                            "Bildirildi" -> Color(0xFF03A9F4)
+                            else -> Color(0xFFFFA000)
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        } else {
+            Column(modifier = Modifier.padding(16.dp)) {
+                val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(sinyal.timestamp))
+                Text("Tarih: $dateStr", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text("Bildiren: ${sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text("Telefon: ${sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(4.dp))
 
             val konumMetni = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
             Text("Adres: $konumMetni", fontSize = 13.sp, color = Color.DarkGray)
@@ -1069,7 +1110,7 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                                 val tel = sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
                                 val adres = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
 
-                                val mesaj = "🚨 *YENİ İHBAR* 🚨\n\n" +
+                                val mesaj = "🚨 *YENİ BİLDİRİM* 🚨\n\n" +
                                         "👤 *Bildiren:* $adSoyad\n" +
                                         "📞 *Telefon:* $tel\n" +
                                         "📍 *Adres:* $adres\n" +
@@ -1127,6 +1168,7 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                     Text("Belediyeye İlet (WhatsApp)", color = Color.White)
                 }
             }
+        }
         }
     }
 }
