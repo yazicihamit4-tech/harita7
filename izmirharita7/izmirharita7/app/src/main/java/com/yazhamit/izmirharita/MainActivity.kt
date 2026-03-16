@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
     }
 }
 
@@ -458,6 +459,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // Anlık Konum
@@ -632,6 +634,30 @@ fun HaritaEkrani(onComplete: () -> Unit) {
             Text("KONUMU SEÇ VE BİLDİR", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
+        if (showSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = { showSuccessDialog = false },
+                title = {
+                    Text(
+                        text = "İşlem Başarılı",
+                        color = Color(0xFF388E3C), // Karşıyaka Yeşili
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("Sinyaliniz başarıyla iletildi! Ekiplerimiz en kısa sürede ilgilenecektir.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showSuccessDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)) // Karşıyaka Kırmızısı
+                    ) {
+                        Text("Tamam", color = Color.White)
+                    }
+                }
+            )
+        }
+
         if (showSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
@@ -769,7 +795,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
 
-                                        Toast.makeText(context, "Sinyal Çakıldı! Ekiplerimize iletildi.", Toast.LENGTH_LONG).show()
+                                        showSuccessDialog = true
                                         flashLightEffect(context, coroutineScope)
                                         showSheet = false
                                         yorum = ""
