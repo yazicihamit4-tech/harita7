@@ -62,6 +62,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
+import java.io.FileOutputStream
+import java.net.URL
 
 // Model Sınıfı
 data class Sinyal(
@@ -963,32 +965,73 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                 }
 
                 val context = LocalContext.current
+                val coroutineScope = rememberCoroutineScope()
+                var isSending by remember { mutableStateOf(false) }
+
                 Button(
                     onClick = {
-                        val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
-                        val tel = sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
-                        val adres = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
-                        val fotoUrl = sinyal.photoUri ?: "Yok"
+                        isSending = true
+                        coroutineScope.launch {
+                            try {
+                                val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
+                                val tel = sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
+                                val adres = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
 
-                        val mesaj = "YENİ İHBAR\n\n" +
-                                "Bildiren: $adSoyad\n" +
-                                "Telefon: $tel\n" +
-                                "Adres: $adres\n" +
-                                "Açıklama: ${sinyal.aciklama}\n" +
-                                "Fotoğraf: $fotoUrl"
+                                val mesaj = "🚨 *YENİ İHBAR* 🚨\n\n" +
+                                        "👤 *Bildiren:* $adSoyad\n" +
+                                        "📞 *Telefon:* $tel\n" +
+                                        "📍 *Adres:* $adres\n" +
+                                        "📝 *Açıklama:* ${sinyal.aciklama}"
 
-                        val encodedMessage = java.net.URLEncoder.encode(mesaj, "UTF-8")
-                        val whatsappUri = android.net.Uri.parse("https://wa.me/905301251355?text=$encodedMessage")
-                        val intent = Intent(Intent.ACTION_VIEW, whatsappUri)
+                                val intent = Intent(Intent.ACTION_SEND)
+                                intent.type = "text/plain"
+                                intent.putExtra(Intent.EXTRA_TEXT, mesaj)
+                                intent.putExtra("jid", "905301251355@s.whatsapp.net")
+                                intent.setPackage("com.whatsapp")
 
-                        try {
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "WhatsApp cihazda yüklü değil veya bulunamadı.", Toast.LENGTH_SHORT).show()
+                                if (sinyal.photoUri != null) {
+                                    val uri = withContext(Dispatchers.IO) {
+                                        try {
+                                            val url = URL(sinyal.photoUri)
+                                            val connection = url.openConnection()
+                                            connection.connect()
+                                            val input = connection.getInputStream()
+                                            val file = File(context.cacheDir, "shared_image_${System.currentTimeMillis()}.jpg")
+                                            val output = FileOutputStream(file)
+                                            input.copyTo(output)
+                                            output.close()
+                                            input.close()
+                                            FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                    }
+
+                                    if (uri != null) {
+                                        intent.type = "image/*"
+                                        intent.putExtra(Intent.EXTRA_STREAM, uri)
+                                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                }
+
+                                context.startActivity(intent)
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                Toast.makeText(context, "WhatsApp cihazda yüklü değil.", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Gönderim sırasında hata oluştu.", Toast.LENGTH_SHORT).show()
+                                e.printStackTrace()
+                            } finally {
+                                isSending = false
+                            }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)) // WhatsApp Yeşili
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Yeşili
+                    enabled = !isSending
                 ) {
+                    if (isSending) {
+                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                         Spacer(modifier = Modifier.width(8.dp))
+                    }
                     Text("Belediyeye İlet (WhatsApp)", color = Color.White)
                 }
             }
