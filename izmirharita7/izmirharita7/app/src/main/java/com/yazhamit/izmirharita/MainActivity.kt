@@ -64,6 +64,9 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 import java.net.URL
+import java.net.HttpURLConnection
+import org.json.JSONObject
+import java.io.OutputStreamWriter
 
 // Model Sınıfı
 data class Sinyal(
@@ -78,7 +81,8 @@ data class Sinyal(
     val photoUri: String? = null,
     val durum: String = "İnceleniyor", // İnceleniyor, Bildirildi, Çözüldü
     val adminCevap: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val fcmToken: String = ""
 )
 
 class MainActivity : ComponentActivity() {
@@ -618,7 +622,11 @@ fun HaritaEkrani(onComplete: () -> Unit) {
 
         Button(
             onClick = {
-                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA))
+                val permissionsToRequest = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                permissionLauncher.launch(permissionsToRequest.toTypedArray())
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -779,6 +787,14 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                         }
 
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonim"
+
+                                        var fcmToken = ""
+                                        try {
+                                            fcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+                                        } catch (e: Exception) {
+                                            Log.e("FCM", "Token alinmadi", e)
+                                        }
+
                                         val yeniSinyal = Sinyal(
                                             id = UUID.randomUUID().toString(),
                                             userId = userId,
@@ -788,7 +804,8 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             telefon = telefon,
                                             adres = addressText,
                                             aciklama = yorum,
-                                            photoUri = uploadedImageUrl
+                                            photoUri = uploadedImageUrl,
+                                            fcmToken = fcmToken
                                         )
 
                                         FirebaseFirestore.getInstance().collection("sinyaller")
@@ -929,6 +946,47 @@ fun AdminEkrani() {
                             .update(mapOf("durum" to durum, "adminCevap" to cevap)).await()
                         Toast.makeText(context, "Güncellendi", Toast.LENGTH_SHORT).show()
                         fetchSinyaller() // Listeyi yenile
+
+                        // Bildirim Gonderimi
+                        if (sinyal.fcmToken.isNotBlank()) {
+                            withContext(Dispatchers.IO) {
+                                try {
+                                    val doc = FirebaseFirestore.getInstance()
+                                        .collection("admin_config")
+                                        .document("credentials")
+                                        .get()
+                                        .await()
+                                    val serverKey = doc.getString("fcmServerKey")
+
+                                    if (!serverKey.isNullOrBlank()) {
+                                        val url = URL("https://fcm.googleapis.com/fcm/send")
+                                        val conn = url.openConnection() as HttpURLConnection
+                                        conn.requestMethod = "POST"
+                                        conn.setRequestProperty("Authorization", "key=$serverKey")
+                                        conn.setRequestProperty("Content-Type", "application/json")
+                                        conn.doOutput = true
+
+                                        val jsonPayload = JSONObject()
+                                        jsonPayload.put("to", sinyal.fcmToken)
+
+                                        val notification = JSONObject()
+                                        notification.put("title", "Sinyal Durumu Güncellendi")
+                                        notification.put("body", "Bildiriminizin durumu '$durum' olarak güncellendi.")
+                                        jsonPayload.put("notification", notification)
+
+                                        val writer = OutputStreamWriter(conn.outputStream)
+                                        writer.write(jsonPayload.toString())
+                                        writer.flush()
+                                        writer.close()
+
+                                        val responseCode = conn.responseCode
+                                        Log.d("FCM_SEND", "Response Code: $responseCode")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("FCM_SEND", "Bildirim gonderme hatasi", e)
+                                }
+                            }
+                        }
                     } catch (e: Exception) {
                         Toast.makeText(context, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
                     }

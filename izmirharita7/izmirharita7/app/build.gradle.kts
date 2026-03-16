@@ -73,6 +73,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-messaging")
     implementation(libs.google.firebase.auth)
     implementation(libs.play.services.auth)
     implementation(libs.coil.compose)
