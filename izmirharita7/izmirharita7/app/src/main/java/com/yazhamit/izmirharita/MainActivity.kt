@@ -956,34 +956,48 @@ fun AdminEkrani() {
                                 try {
                                     val doc = FirebaseFirestore.getInstance()
                                         .collection("admin_config")
-                                        .document("credentials")
+                                        .document("service_account")
                                         .get()
                                         .await()
-                                    val serverKey = doc.getString("fcmServerKey")
 
-                                    if (!serverKey.isNullOrBlank()) {
-                                        val url = URL("https://fcm.googleapis.com/fcm/send")
+                                    val jsonString = doc.getString("json")
+                                    val projectId = FirebaseApp.getInstance().options.projectId
+
+                                    if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
+                                        val stream = java.io.ByteArrayInputStream(jsonString.toByteArray(Charsets.UTF_8))
+                                        val credentials = com.google.auth.oauth2.GoogleCredentials.fromStream(stream)
+                                            .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
+                                        credentials.refreshIfExpired()
+                                        val accessToken = credentials.accessToken.tokenValue
+
+                                        val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
                                         val conn = url.openConnection() as HttpURLConnection
                                         conn.requestMethod = "POST"
-                                        conn.setRequestProperty("Authorization", "key=$serverKey")
+                                        conn.setRequestProperty("Authorization", "Bearer $accessToken")
                                         conn.setRequestProperty("Content-Type", "application/json")
                                         conn.doOutput = true
 
-                                        val jsonPayload = JSONObject()
-                                        jsonPayload.put("to", sinyal.fcmToken)
+                                        val messageObj = JSONObject()
+                                        messageObj.put("token", sinyal.fcmToken)
 
-                                        val notification = JSONObject()
-                                        notification.put("title", "Sinyal Durumu Güncellendi")
-                                        notification.put("body", "Bildiriminizin durumu '$durum' olarak güncellendi.")
-                                        jsonPayload.put("notification", notification)
+                                        val notificationObj = JSONObject()
+                                        notificationObj.put("title", "Sinyal Durumu Güncellendi")
+                                        notificationObj.put("body", "Bildiriminizin durumu '$durum' olarak güncellendi.")
+                                        messageObj.put("notification", notificationObj)
+
+                                        val rootObj = JSONObject()
+                                        rootObj.put("message", messageObj)
 
                                         val writer = OutputStreamWriter(conn.outputStream)
-                                        writer.write(jsonPayload.toString())
+                                        writer.write(rootObj.toString())
                                         writer.flush()
                                         writer.close()
 
                                         val responseCode = conn.responseCode
-                                        Log.d("FCM_SEND", "Response Code: $responseCode")
+                                        val responseMessage = conn.responseMessage
+                                        Log.d("FCM_SEND", "HTTP v1 Response Code: $responseCode, Msg: $responseMessage")
+                                    } else {
+                                        Log.e("FCM_SEND", "Service Account JSON veya Project ID eksik.")
                                     }
                                 } catch (e: Exception) {
                                     Log.e("FCM_SEND", "Bildirim gonderme hatasi", e)
