@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -131,9 +132,12 @@ enum class Ekran {
 
 @Composable
 fun UygulamaNavigasyonu() {
-    var mevcutEkran by remember { mutableStateOf(Ekran.LOBI) }
-    var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
     val context = LocalContext.current
+    val sharedPref = remember { context.getSharedPreferences("admin_prefs", Context.MODE_PRIVATE) }
+    val isAdminLoggedIn = remember { sharedPref.getBoolean("isAdminLoggedIn", false) }
+
+    var mevcutEkran by remember { mutableStateOf(if (isAdminLoggedIn) Ekran.ADMIN else Ekran.LOBI) }
+    var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
     val activity = context as? Activity
     val coroutineScope = rememberCoroutineScope()
 
@@ -202,29 +206,44 @@ fun UygulamaNavigasyonu() {
                     }
                 }
 
-                if (currentUser == null) {
-                    // Uygulama açılışında otomatik anonim giriş yap (Google Sign-in yerine)
-                    LaunchedEffect(Unit) {
-                        try {
-                            val auth = FirebaseAuth.getInstance()
-                            if (auth.currentUser == null) {
-                                auth.signInAnonymously().await()
-                                currentUser = auth.currentUser
-                                Log.d("Auth", "Anonim giriş yapıldı: ${currentUser?.uid}")
-                            } else {
-                                currentUser = auth.currentUser
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (mevcutEkran == Ekran.ADMIN) {
+                        IconButton(onClick = {
+                            with(sharedPref.edit()) {
+                                putBoolean("isAdminLoggedIn", false)
+                                apply()
                             }
-                        } catch (e: Exception) {
-                            Log.e("Auth", "Anonim giriş hatası", e)
+                            com.google.firebase.messaging.FirebaseMessaging.getInstance().unsubscribeFromTopic("admin_notifications")
+                            mevcutEkran = Ekran.LOBI
+                        }) {
+                            Icon(Icons.Filled.ExitToApp, contentDescription = "Çıkış Yap", tint = Color.White)
                         }
                     }
-                } else {
-                    // Sağ üstte kullanıcı id'sinin ufak bir parçası veya durumu
-                    Text(
-                        text = "Aktif (Anonim)",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+
+                    if (currentUser == null) {
+                        // Uygulama açılışında otomatik anonim giriş yap (Google Sign-in yerine)
+                        LaunchedEffect(Unit) {
+                            try {
+                                val auth = FirebaseAuth.getInstance()
+                                if (auth.currentUser == null) {
+                                    auth.signInAnonymously().await()
+                                    currentUser = auth.currentUser
+                                    Log.d("Auth", "Anonim giriş yapıldı: ${currentUser?.uid}")
+                                } else {
+                                    currentUser = auth.currentUser
+                                }
+                            } catch (e: Exception) {
+                                Log.e("Auth", "Anonim giriş hatası", e)
+                            }
+                        }
+                    } else {
+                        // Sağ üstte kullanıcı id'sinin ufak bir parçası veya durumu
+                        Text(
+                            text = "Aktif (Anonim)",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
         }
@@ -272,6 +291,11 @@ fun UygulamaNavigasyonu() {
                                     if (dbUser == username && dbPass == password) {
                                         mevcutEkran = Ekran.ADMIN
                                         showAdminDialog = false
+                                        with(sharedPref.edit()) {
+                                            putBoolean("isAdminLoggedIn", true)
+                                            apply()
+                                        }
+                                        com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("admin_notifications")
                                         Toast.makeText(context, "Admin Paneline Hoşgeldiniz", Toast.LENGTH_SHORT).show()
                                     } else {
                                         Toast.makeText(context, "Hatalı Kullanıcı Adı veya Şifre", Toast.LENGTH_SHORT).show()
@@ -283,6 +307,11 @@ fun UygulamaNavigasyonu() {
                                     if (encodedUser == "eWF6aGFtaXQ=" && encodedPass == "NzE1ODU5") {
                                         mevcutEkran = Ekran.ADMIN
                                         showAdminDialog = false
+                                        with(sharedPref.edit()) {
+                                            putBoolean("isAdminLoggedIn", true)
+                                            apply()
+                                        }
+                                        com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("admin_notifications")
                                         Toast.makeText(context, "Admin Paneline Hoşgeldiniz", Toast.LENGTH_SHORT).show()
                                     } else {
                                         Toast.makeText(context, "Bağlantı kurulamadı veya Hatalı Giriş", Toast.LENGTH_LONG).show()
@@ -814,6 +843,56 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                         FirebaseFirestore.getInstance().collection("sinyaller")
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
+
+                                        // Admine bildirim gonder
+                                        withContext(Dispatchers.IO) {
+                                            try {
+                                                val doc = FirebaseFirestore.getInstance()
+                                                    .collection("admin_config")
+                                                    .document("service_account")
+                                                    .get()
+                                                    .await()
+
+                                                val jsonString = doc.getString("json")
+                                                val projectId = FirebaseApp.getInstance().options.projectId
+
+                                                if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
+                                                    val stream = java.io.ByteArrayInputStream(jsonString.toByteArray(Charsets.UTF_8))
+                                                    val credentials = com.google.auth.oauth2.GoogleCredentials.fromStream(stream)
+                                                        .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
+                                                    credentials.refreshIfExpired()
+                                                    val accessToken = credentials.accessToken.tokenValue
+
+                                                    val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
+                                                    val conn = url.openConnection() as HttpURLConnection
+                                                    conn.requestMethod = "POST"
+                                                    conn.setRequestProperty("Authorization", "Bearer $accessToken")
+                                                    conn.setRequestProperty("Content-Type", "application/json")
+                                                    conn.doOutput = true
+
+                                                    val messageObj = JSONObject()
+                                                    messageObj.put("topic", "admin_notifications")
+
+                                                    val notificationObj = JSONObject()
+                                                    notificationObj.put("title", "Yeni Bildirim Geldi")
+                                                    notificationObj.put("body", "Bölgede yeni bir sorun bildirildi.")
+                                                    messageObj.put("notification", notificationObj)
+
+                                                    val rootObj = JSONObject()
+                                                    rootObj.put("message", messageObj)
+
+                                                    val writer = OutputStreamWriter(conn.outputStream)
+                                                    writer.write(rootObj.toString())
+                                                    writer.flush()
+                                                    writer.close()
+
+                                                    val responseCode = conn.responseCode
+                                                    Log.d("FCM_ADMIN", "Admin Response Code: $responseCode")
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.e("FCM_ADMIN", "Admin bildirim hatasi", e)
+                                            }
+                                        }
 
                                         showSuccessDialog = true
                                         flashLightEffect(context, coroutineScope)
