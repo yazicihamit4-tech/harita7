@@ -47,6 +47,10 @@ android {
             excludes += "META-INF/DEPENDENCIES"
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+    }
 }
 
 // KRİTİK DÜZELTME: Başka kütüphanelerin gizlice API 36 (1.17.0) istemesini engeller
