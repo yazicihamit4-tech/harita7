@@ -72,6 +72,15 @@ import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.util.Date
+import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.AdError
 
 // Model Sınıfı
 data class Sinyal(
@@ -101,6 +110,8 @@ class MainActivity : ComponentActivity() {
             e.printStackTrace()
         }
 
+        com.google.android.gms.ads.MobileAds.initialize(this) {}
+
         setContent {
             // Karşıyaka Teması Renkleri (Kırmızı ve Yeşil)
             val KarsiyakaColorScheme = lightColorScheme(
@@ -129,6 +140,53 @@ enum class Ekran {
     HARITA,
     TAKIP,
     ADMIN
+}
+
+@Composable
+fun BannerAdView(modifier: Modifier = Modifier, adUnitId: String = "ca-app-pub-5879474591831999/9816381152") {
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { context ->
+            AdView(context).apply {
+                setAdSize(AdSize.BANNER)
+                this.adUnitId = adUnitId
+                loadAd(AdRequest.Builder().build())
+            }
+        }
+    )
+}
+
+var mInterstitialAd: InterstitialAd? = null
+
+fun loadInterstitial(context: Context) {
+    val adRequest = AdRequest.Builder().build()
+    InterstitialAd.load(context, "ca-app-pub-5879474591831999/4703655274", adRequest, object : InterstitialAdLoadCallback() {
+        override fun onAdFailedToLoad(adError: LoadAdError) {
+            mInterstitialAd = null
+        }
+        override fun onAdLoaded(interstitialAd: InterstitialAd) {
+            mInterstitialAd = interstitialAd
+        }
+    })
+}
+
+fun showInterstitial(context: Context, onAdDismissed: () -> Unit) {
+    val activity = context as? Activity
+    if (mInterstitialAd != null && activity != null) {
+        mInterstitialAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                mInterstitialAd = null
+                onAdDismissed()
+            }
+            override fun onAdFailedToShowFullScreenContent(p0: AdError) {
+                mInterstitialAd = null
+                onAdDismissed()
+            }
+        }
+        mInterstitialAd?.show(activity)
+    } else {
+        onAdDismissed()
+    }
 }
 
 @Composable
@@ -446,6 +504,8 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
         }
 
         Spacer(modifier = Modifier.weight(0.5f))
+
+        BannerAdView()
     }
 }
 
@@ -494,6 +554,9 @@ fun flashLightEffect(context: Context, coroutineScope: CoroutineScope) {
 @Composable
 fun HaritaEkrani(onComplete: () -> Unit) {
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        loadInterstitial(context)
+    }
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
     var showSuccessDialog by remember { mutableStateOf(false) }
@@ -690,7 +753,12 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                 },
                 confirmButton = {
                     Button(
-                        onClick = { showSuccessDialog = false },
+                        onClick = {
+                            showSuccessDialog = false
+                            showInterstitial(context) {
+                                onComplete()
+                            }
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)) // Karşıyaka Kırmızısı
                     ) {
                         Text("Tamam", color = Color.White)

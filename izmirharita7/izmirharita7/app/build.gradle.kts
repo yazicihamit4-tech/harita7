@@ -89,6 +89,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation("com.google.auth:google-auth-library-oauth2-http:1.20.0")
 
+    // --- ADMOB ---
+    implementation("com.google.android.gms:play-services-ads:23.0.0")
+
     // --- TEST VE DEBUG ---
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

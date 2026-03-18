@@ -21,6 +21,10 @@
         tools:targetApi="35"> <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="AIzaSyDu3yMhJCviLLM-IFrwxX_ipPMxIqz3rfY" />
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-5879474591831999~2129462826" />
+
 
         <meta-data
             android:name="com.google.android.gms.version"
