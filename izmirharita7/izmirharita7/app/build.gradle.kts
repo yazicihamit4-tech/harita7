@@ -87,7 +87,6 @@ dependencies {
     implementation(libs.google.firebase.auth)
     implementation(libs.play.services.auth)
     implementation(libs.coil.compose)
-    implementation("com.google.auth:google-auth-library-oauth2-http:1.20.0")
 
     // --- ADMOB ---
     implementation("com.google.android.gms:play-services-ads:23.0.0")

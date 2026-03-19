@@ -81,6 +81,10 @@ import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.AdError
+import java.security.KeyFactory
+import java.security.Signature
+import java.security.spec.PKCS8EncodedKeySpec
+import android.util.Base64
 
 // Model Sınıfı
 data class Sinyal(
@@ -187,6 +191,75 @@ fun showInterstitial(context: Context, onAdDismissed: () -> Unit) {
     } else {
         onAdDismissed()
     }
+}
+
+fun getAccessTokenFromServiceAccount(jsonString: String): String? {
+    try {
+        val saJson = JSONObject(jsonString)
+        val privateKeyStr = saJson.getString("private_key")
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replace("\n", "")
+            .replace("\\n", "")
+
+        val clientEmail = saJson.getString("client_email")
+
+        val header = JSONObject()
+        header.put("alg", "RS256")
+        header.put("typ", "JWT")
+
+        val now = System.currentTimeMillis() / 1000
+        val claim = JSONObject()
+        claim.put("iss", clientEmail)
+        claim.put("scope", "https://www.googleapis.com/auth/firebase.messaging")
+        claim.put("aud", "https://oauth2.googleapis.com/token")
+        claim.put("exp", now + 3600)
+        claim.put("iat", now)
+
+        val headerB64 = Base64.encodeToString(header.toString().toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+        val claimB64 = Base64.encodeToString(claim.toString().toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+
+        val tokenToSign = "$headerB64.$claimB64"
+
+        val keyBytes = Base64.decode(privateKeyStr, Base64.DEFAULT)
+        val keySpec = PKCS8EncodedKeySpec(keyBytes)
+        val kf = KeyFactory.getInstance("RSA")
+        val privateKey = kf.generatePrivate(keySpec)
+
+        val signature = Signature.getInstance("SHA256withRSA")
+        signature.initSign(privateKey)
+        signature.update(tokenToSign.toByteArray(Charsets.UTF_8))
+        val sigBytes = signature.sign()
+
+        val sigB64 = Base64.encodeToString(sigBytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+
+        val jwt = "$tokenToSign.$sigB64"
+
+        val url = URL("https://oauth2.googleapis.com/token")
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+        conn.doOutput = true
+
+        val postData = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=$jwt"
+        val writer = OutputStreamWriter(conn.outputStream)
+        writer.write(postData)
+        writer.flush()
+        writer.close()
+
+        if (conn.responseCode == 200) {
+            val response = conn.inputStream.bufferedReader().use { it.readText() }
+            val responseJson = JSONObject(response)
+            return responseJson.getString("access_token")
+        } else {
+            Log.e("JWT", "Token exchange failed: ${conn.responseCode} ${conn.responseMessage}")
+            val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
+            Log.e("JWT", "Error body: $errorBody")
+        }
+    } catch (e: Exception) {
+        Log.e("JWT", "Error generating access token", e)
+    }
+    return null
 }
 
 @Composable
@@ -926,11 +999,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                                 val projectId = FirebaseApp.getInstance().options.projectId
 
                                                 if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
-                                                    val stream = java.io.ByteArrayInputStream(jsonString.toByteArray(Charsets.UTF_8))
-                                                    val credentials = com.google.auth.oauth2.GoogleCredentials.fromStream(stream)
-                                                        .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
-                                                    credentials.refreshIfExpired()
-                                                    val accessToken = credentials.accessToken.tokenValue
+                                                    val accessToken = getAccessTokenFromServiceAccount(jsonString)
 
                                                     val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
                                                     val conn = url.openConnection() as HttpURLConnection
@@ -1150,11 +1219,7 @@ fun AdminEkrani() {
                                     val projectId = FirebaseApp.getInstance().options.projectId
 
                                     if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
-                                        val stream = java.io.ByteArrayInputStream(jsonString.toByteArray(Charsets.UTF_8))
-                                        val credentials = com.google.auth.oauth2.GoogleCredentials.fromStream(stream)
-                                            .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
-                                        credentials.refreshIfExpired()
-                                        val accessToken = credentials.accessToken.tokenValue
+                                        val accessToken = getAccessTokenFromServiceAccount(jsonString)
 
                                         val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
                                         val conn = url.openConnection() as HttpURLConnection
