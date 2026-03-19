@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -513,6 +514,15 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
         ),
         label = "logo_scale"
     )
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logo_rotation"
+    )
 
     Column(
         modifier = Modifier
@@ -526,7 +536,8 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
         Surface(
             modifier = Modifier
                 .size(120.dp)
-                .scale(scale),
+                .scale(scale)
+                .rotate(rotation),
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
@@ -534,9 +545,9 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
-                    imageVector = Icons.Filled.Place,
-                    contentDescription = "İzmir Logo",
-                    tint = MaterialTheme.colorScheme.secondary,
+                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_worker),
+                    contentDescription = "Belediye İşçisi Logo",
+                    tint = Color.Unspecified,
                     modifier = Modifier.size(80.dp)
                 )
             }
@@ -1040,7 +1051,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             .set(yeniSinyal).await()
 
                                         // Admine bildirim gonder
-                                        withContext(Dispatchers.IO) {
+                                        coroutineScope.launch(Dispatchers.IO) {
                                             try {
                                                 val doc = FirebaseFirestore.getInstance()
                                                     .collection("admin_config")
