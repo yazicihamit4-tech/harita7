@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -480,6 +481,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
     var addressText by remember { mutableStateOf("Adres tespit ediliyor...") }
     var isAddressResolved by remember { mutableStateOf(false) }
     var failedAddressRetries by remember { mutableStateOf(0) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val karsiyakaMerkez = LatLng(38.4552, 27.1235)
@@ -633,9 +635,17 @@ fun HaritaEkrani(onComplete: () -> Unit) {
         }
 
         if (showSheet) {
-            ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 64.dp) // Klavye açılışı için ekstra tampon alan
+                        .imePadding()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text("Detayları Bildir", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -761,7 +771,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
 
-                                        Toast.makeText(context, "Sinyal Çakıldı! Ekiplerimize iletildi.", Toast.LENGTH_LONG).show()
+                                        showSuccessDialog = true
                                         flashLightEffect(context, coroutineScope)
                                         showSheet = false
                                         yorum = ""
@@ -789,6 +799,32 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        if (showSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = { showSuccessDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = "Başarılı", tint = Color(0xFF388E3C), modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sinyal Alındı!", color = Color(0xFF388E3C), fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Text("Bildiriminiz başarıyla ekiplerimize iletilmiştir. Karşıyaka için katkılarınızdan dolayı teşekkür ederiz.", color = Color.DarkGray)
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showSuccessDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                    ) {
+                        Text("Kapat", color = Color.White)
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }
