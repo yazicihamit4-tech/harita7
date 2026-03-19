@@ -17,9 +17,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -473,8 +478,15 @@ fun UygulamaNavigasyonu() {
         }
 
         // Ana İçerik Değişimi
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (mevcutEkran) {
+        AnimatedContent(
+            targetState = mevcutEkran,
+            transitionSpec = {
+                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+            },
+            label = "screen_transition",
+            modifier = Modifier.fillMaxSize()
+        ) { screen ->
+            when (screen) {
                 Ekran.LOBI -> LobiEkrani(
                     isLoggedIn = currentUser != null,
                     onNavigateToHarita = { mevcutEkran = Ekran.HARITA },
@@ -491,6 +503,17 @@ fun UygulamaNavigasyonu() {
 @Composable
 fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateToTakip: () -> Unit) {
     val context = LocalContext.current
+    val infiniteTransition = rememberInfiniteTransition(label = "infinite_transition")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "logo_scale"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -501,7 +524,9 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
 
         // Tematik bir arkaya sahip estetik logo kutusu
         Surface(
-            modifier = Modifier.size(120.dp),
+            modifier = Modifier
+                .size(120.dp)
+                .scale(scale),
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
@@ -536,6 +561,10 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
 
         Spacer(modifier = Modifier.weight(1f))
 
+        val interactionSource1 = remember { MutableInteractionSource() }
+        val isPressed1 by interactionSource1.collectIsPressedAsState()
+        val buttonScale1 by animateFloatAsState(targetValue = if (isPressed1) 0.95f else 1f, label = "btn1_scale")
+
         Button(
             onClick = {
                 if (isLoggedIn) onNavigateToHarita()
@@ -544,23 +573,32 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp)
+                .scale(buttonScale1)
                 .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 12.dp,
-                pressedElevation = 4.dp
-            )
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
+            contentPadding = PaddingValues(0.dp),
+            interactionSource = interactionSource1,
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 12.dp, pressedElevation = 4.dp)
         ) {
-            Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(28.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("SİNYAL ÇAK", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(colors = listOf(Color(0xFFE53935), Color(0xFFB71C1C)))),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(28.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("SİNYAL ÇAK", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        val interactionSource2 = remember { MutableInteractionSource() }
+        val isPressed2 by interactionSource2.collectIsPressedAsState()
+        val buttonScale2 by animateFloatAsState(targetValue = if (isPressed2) 0.95f else 1f, label = "btn2_scale")
 
         Button(
             onClick = {
@@ -570,20 +608,25 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             modifier = Modifier
                 .fillMaxWidth()
                 .height(72.dp)
+                .scale(buttonScale2)
                 .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
             shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 12.dp,
-                pressedElevation = 4.dp
-            )
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
+            contentPadding = PaddingValues(0.dp),
+            interactionSource = interactionSource2,
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 12.dp, pressedElevation = 4.dp)
         ) {
-            Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(28.dp))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("BİLDİRİMLERİMİ TAKİP ET", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.linearGradient(colors = listOf(Color(0xFF43A047), Color(0xFF1B5E20)))),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(28.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("BİLDİRİMLERİMİ TAKİP ET", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         Spacer(modifier = Modifier.weight(0.5f))
@@ -1303,7 +1346,8 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clickable(onClick = { isExpanded = !isExpanded }),
+            .clickable(onClick = { isExpanded = !isExpanded })
+            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(8.dp)
@@ -1312,7 +1356,9 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
             val dateStr = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(Date(sinyal.timestamp))
             val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
             Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
+                    .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1340,7 +1386,10 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                 }
             }
         } else {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier
+                .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
+                .padding(16.dp)
+            ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(sinyal.timestamp))
                     Text("Tarih: $dateStr", fontSize = 12.sp, color = Color.Gray)
@@ -1503,12 +1552,16 @@ fun BildirimKarti(konum: String, sorun: String, durum: String, adminMesaji: Stri
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .shadow(8.dp, RoundedCornerShape(16.dp)),
+            .shadow(8.dp, RoundedCornerShape(16.dp))
+            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier
+            .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
+            .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
