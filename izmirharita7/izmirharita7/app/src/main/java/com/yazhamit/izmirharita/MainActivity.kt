@@ -114,7 +114,13 @@ class MainActivity : ComponentActivity() {
             e.printStackTrace()
         }
 
-        com.google.android.gms.ads.MobileAds.initialize(this) {}
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                com.google.android.gms.ads.MobileAds.initialize(this@MainActivity) {}
+            } catch (e: Exception) {
+                Log.e("AdMob", "AdMob baslatilamadi", e)
+            }
+        }
 
         setContent {
             // Karşıyaka Teması Renkleri (Kırmızı ve Yeşil)
