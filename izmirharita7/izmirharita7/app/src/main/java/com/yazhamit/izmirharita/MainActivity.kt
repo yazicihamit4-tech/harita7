@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
@@ -541,15 +543,16 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
-            shape = RoundedCornerShape(20.dp),
+                .height(72.dp)
+                .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 10.dp,
-                pressedElevation = 2.dp
+                defaultElevation = 12.dp,
+                pressedElevation = 4.dp
             )
         ) {
             Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(28.dp))
@@ -566,15 +569,16 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
-            shape = RoundedCornerShape(20.dp),
+                .height(72.dp)
+                .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = Color.White
             ),
             elevation = ButtonDefaults.buttonElevation(
-                defaultElevation = 10.dp,
-                pressedElevation = 2.dp
+                defaultElevation = 12.dp,
+                pressedElevation = 4.dp
             )
         ) {
             Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(28.dp))
@@ -1168,11 +1172,16 @@ fun AdminEkrani() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .shadow(12.dp, RoundedCornerShape(20.dp)),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier
+                .background(Brush.linearGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFF1F8E9))))
+                .padding(16.dp)
+            ) {
                 val toplam = tumSinyaller.size
                 val cozuldu = tumSinyaller.count { it.durum == "Çözüldü" }
                 val bekleyen = tumSinyaller.count { it.durum != "Çözüldü" }
@@ -1293,9 +1302,11 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .shadow(8.dp, RoundedCornerShape(16.dp))
             .clickable(onClick = { isExpanded = !isExpanded }),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(8.dp)
     ) {
         if (!isExpanded) {
             val dateStr = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(Date(sinyal.timestamp))
@@ -1491,10 +1502,11 @@ fun BildirimKarti(konum: String, sorun: String, durum: String, adminMesaji: Stri
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        shape = RoundedCornerShape(12.dp),
+            .padding(vertical = 8.dp)
+            .shadow(8.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
