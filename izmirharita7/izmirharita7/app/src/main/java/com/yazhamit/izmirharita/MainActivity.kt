@@ -14,24 +14,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -75,24 +64,6 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 import java.net.URL
-import java.net.HttpURLConnection
-import org.json.JSONObject
-import java.io.OutputStreamWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import androidx.compose.ui.viewinterop.AndroidView
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.AdError
-import java.security.KeyFactory
-import java.security.Signature
-import java.security.spec.PKCS8EncodedKeySpec
-import android.util.Base64
 
 // Model Sınıfı
 data class Sinyal(
@@ -107,8 +78,7 @@ data class Sinyal(
     val photoUri: String? = null,
     val durum: String = "İnceleniyor", // İnceleniyor, Bildirildi, Çözüldü
     val adminCevap: String = "",
-    val timestamp: Long = System.currentTimeMillis(),
-    val fcmToken: String = ""
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 class MainActivity : ComponentActivity() {
@@ -120,14 +90,6 @@ class MainActivity : ComponentActivity() {
             FirebaseApp.initializeApp(this)
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                com.google.android.gms.ads.MobileAds.initialize(this@MainActivity) {}
-            } catch (e: Exception) {
-                Log.e("AdMob", "AdMob baslatilamadi", e)
-            }
         }
 
         setContent {
@@ -149,7 +111,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
     }
 }
 
@@ -161,129 +122,10 @@ enum class Ekran {
 }
 
 @Composable
-fun BannerAdView(modifier: Modifier = Modifier, adUnitId: String = "ca-app-pub-5879474591831999/9816381152") {
-    AndroidView(
-        modifier = modifier.fillMaxWidth(),
-        factory = { context ->
-            AdView(context).apply {
-                setAdSize(AdSize.BANNER)
-                this.adUnitId = adUnitId
-                loadAd(AdRequest.Builder().build())
-            }
-        }
-    )
-}
-
-var mInterstitialAd: InterstitialAd? = null
-
-fun loadInterstitial(context: Context) {
-    val adRequest = AdRequest.Builder().build()
-    InterstitialAd.load(context, "ca-app-pub-5879474591831999/4703655274", adRequest, object : InterstitialAdLoadCallback() {
-        override fun onAdFailedToLoad(adError: LoadAdError) {
-            mInterstitialAd = null
-        }
-        override fun onAdLoaded(interstitialAd: InterstitialAd) {
-            mInterstitialAd = interstitialAd
-        }
-    })
-}
-
-fun showInterstitial(context: Context, onAdDismissed: () -> Unit) {
-    val activity = context as? Activity
-    if (mInterstitialAd != null && activity != null) {
-        mInterstitialAd?.fullScreenContentCallback = object: FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                mInterstitialAd = null
-                onAdDismissed()
-            }
-            override fun onAdFailedToShowFullScreenContent(p0: AdError) {
-                mInterstitialAd = null
-                onAdDismissed()
-            }
-        }
-        mInterstitialAd?.show(activity)
-    } else {
-        onAdDismissed()
-    }
-}
-
-fun getAccessTokenFromServiceAccount(jsonString: String): String? {
-    try {
-        val saJson = JSONObject(jsonString)
-        val privateKeyStr = saJson.getString("private_key")
-            .replace("-----BEGIN PRIVATE KEY-----", "")
-            .replace("-----END PRIVATE KEY-----", "")
-            .replace("\n", "")
-            .replace("\\n", "")
-
-        val clientEmail = saJson.getString("client_email")
-
-        val header = JSONObject()
-        header.put("alg", "RS256")
-        header.put("typ", "JWT")
-
-        val now = System.currentTimeMillis() / 1000
-        val claim = JSONObject()
-        claim.put("iss", clientEmail)
-        claim.put("scope", "https://www.googleapis.com/auth/firebase.messaging")
-        claim.put("aud", "https://oauth2.googleapis.com/token")
-        claim.put("exp", now + 3600)
-        claim.put("iat", now)
-
-        val headerB64 = Base64.encodeToString(header.toString().toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-        val claimB64 = Base64.encodeToString(claim.toString().toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-
-        val tokenToSign = "$headerB64.$claimB64"
-
-        val keyBytes = Base64.decode(privateKeyStr, Base64.DEFAULT)
-        val keySpec = PKCS8EncodedKeySpec(keyBytes)
-        val kf = KeyFactory.getInstance("RSA")
-        val privateKey = kf.generatePrivate(keySpec)
-
-        val signature = Signature.getInstance("SHA256withRSA")
-        signature.initSign(privateKey)
-        signature.update(tokenToSign.toByteArray(Charsets.UTF_8))
-        val sigBytes = signature.sign()
-
-        val sigB64 = Base64.encodeToString(sigBytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-
-        val jwt = "$tokenToSign.$sigB64"
-
-        val url = URL("https://oauth2.googleapis.com/token")
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-        conn.doOutput = true
-
-        val postData = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=$jwt"
-        val writer = OutputStreamWriter(conn.outputStream)
-        writer.write(postData)
-        writer.flush()
-        writer.close()
-
-        if (conn.responseCode == 200) {
-            val response = conn.inputStream.bufferedReader().use { it.readText() }
-            val responseJson = JSONObject(response)
-            return responseJson.getString("access_token")
-        } else {
-            Log.e("JWT", "Token exchange failed: ${conn.responseCode} ${conn.responseMessage}")
-            val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
-            Log.e("JWT", "Error body: $errorBody")
-        }
-    } catch (e: Exception) {
-        Log.e("JWT", "Error generating access token", e)
-    }
-    return null
-}
-
-@Composable
 fun UygulamaNavigasyonu() {
-    val context = LocalContext.current
-    val sharedPref = remember { context.getSharedPreferences("admin_prefs", Context.MODE_PRIVATE) }
-    val isAdminLoggedIn = remember { sharedPref.getBoolean("isAdminLoggedIn", false) }
-
-    var mevcutEkran by remember { mutableStateOf(if (isAdminLoggedIn) Ekran.ADMIN else Ekran.LOBI) }
+    var mevcutEkran by remember { mutableStateOf(Ekran.LOBI) }
     var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
+    val context = LocalContext.current
     val activity = context as? Activity
     val coroutineScope = rememberCoroutineScope()
 
@@ -352,44 +194,29 @@ fun UygulamaNavigasyonu() {
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (mevcutEkran == Ekran.ADMIN) {
-                        IconButton(onClick = {
-                            with(sharedPref.edit()) {
-                                putBoolean("isAdminLoggedIn", false)
-                                apply()
+                if (currentUser == null) {
+                    // Uygulama açılışında otomatik anonim giriş yap (Google Sign-in yerine)
+                    LaunchedEffect(Unit) {
+                        try {
+                            val auth = FirebaseAuth.getInstance()
+                            if (auth.currentUser == null) {
+                                auth.signInAnonymously().await()
+                                currentUser = auth.currentUser
+                                Log.d("Auth", "Anonim giriş yapıldı: ${currentUser?.uid}")
+                            } else {
+                                currentUser = auth.currentUser
                             }
-                            com.google.firebase.messaging.FirebaseMessaging.getInstance().unsubscribeFromTopic("admin_notifications")
-                            mevcutEkran = Ekran.LOBI
-                        }) {
-                            Icon(Icons.Filled.ExitToApp, contentDescription = "Çıkış Yap", tint = Color.White)
+                        } catch (e: Exception) {
+                            Log.e("Auth", "Anonim giriş hatası", e)
                         }
                     }
-
-                    if (currentUser == null) {
-                        // Uygulama açılışında otomatik anonim giriş yap (Google Sign-in yerine)
-                        LaunchedEffect(Unit) {
-                            try {
-                                val auth = FirebaseAuth.getInstance()
-                                if (auth.currentUser == null) {
-                                    auth.signInAnonymously().await()
-                                    currentUser = auth.currentUser
-                                    Log.d("Auth", "Anonim giriş yapıldı: ${currentUser?.uid}")
-                                } else {
-                                    currentUser = auth.currentUser
-                                }
-                            } catch (e: Exception) {
-                                Log.e("Auth", "Anonim giriş hatası", e)
-                            }
-                        }
-                    } else {
-                        // Sağ üstte kullanıcı id'sinin ufak bir parçası veya durumu
-                        Text(
-                            text = "Aktif (Anonim)",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                } else {
+                    // Sağ üstte kullanıcı id'sinin ufak bir parçası veya durumu
+                    Text(
+                        text = "Aktif (Anonim)",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
@@ -437,11 +264,6 @@ fun UygulamaNavigasyonu() {
                                     if (dbUser == username && dbPass == password) {
                                         mevcutEkran = Ekran.ADMIN
                                         showAdminDialog = false
-                                        with(sharedPref.edit()) {
-                                            putBoolean("isAdminLoggedIn", true)
-                                            apply()
-                                        }
-                                        com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("admin_notifications")
                                         Toast.makeText(context, "Admin Paneline Hoşgeldiniz", Toast.LENGTH_SHORT).show()
                                     } else {
                                         Toast.makeText(context, "Hatalı Kullanıcı Adı veya Şifre", Toast.LENGTH_SHORT).show()
@@ -453,11 +275,6 @@ fun UygulamaNavigasyonu() {
                                     if (encodedUser == "eWF6aGFtaXQ=" && encodedPass == "NzE1ODU5") {
                                         mevcutEkran = Ekran.ADMIN
                                         showAdminDialog = false
-                                        with(sharedPref.edit()) {
-                                            putBoolean("isAdminLoggedIn", true)
-                                            apply()
-                                        }
-                                        com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("admin_notifications")
                                         Toast.makeText(context, "Admin Paneline Hoşgeldiniz", Toast.LENGTH_SHORT).show()
                                     } else {
                                         Toast.makeText(context, "Bağlantı kurulamadı veya Hatalı Giriş", Toast.LENGTH_LONG).show()
@@ -479,15 +296,8 @@ fun UygulamaNavigasyonu() {
         }
 
         // Ana İçerik Değişimi
-        AnimatedContent(
-            targetState = mevcutEkran,
-            transitionSpec = {
-                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-            },
-            label = "screen_transition",
-            modifier = Modifier.fillMaxSize()
-        ) { screen ->
-            when (screen) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (mevcutEkran) {
                 Ekran.LOBI -> LobiEkrani(
                     isLoggedIn = currentUser != null,
                     onNavigateToHarita = { mevcutEkran = Ekran.HARITA },
@@ -504,26 +314,6 @@ fun UygulamaNavigasyonu() {
 @Composable
 fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateToTakip: () -> Unit) {
     val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "infinite_transition")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "logo_scale"
-    )
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = -5f,
-        targetValue = 5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "logo_rotation"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -534,10 +324,7 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
 
         // Tematik bir arkaya sahip estetik logo kutusu
         Surface(
-            modifier = Modifier
-                .size(120.dp)
-                .scale(scale)
-                .rotate(rotation),
+            modifier = Modifier.size(120.dp),
             shape = RoundedCornerShape(32.dp),
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
@@ -545,9 +332,9 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
-                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_worker),
-                    contentDescription = "Belediye İşçisi Logo",
-                    tint = Color.Unspecified,
+                    imageVector = Icons.Filled.Place,
+                    contentDescription = "İzmir Logo",
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(80.dp)
                 )
             }
@@ -572,10 +359,6 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
 
         Spacer(modifier = Modifier.weight(1f))
 
-        val interactionSource1 = remember { MutableInteractionSource() }
-        val isPressed1 by interactionSource1.collectIsPressedAsState()
-        val buttonScale1 by animateFloatAsState(targetValue = if (isPressed1) 0.95f else 1f, label = "btn1_scale")
-
         Button(
             onClick = {
                 if (isLoggedIn) onNavigateToHarita()
@@ -583,33 +366,23 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .scale(buttonScale1)
-                .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
-            contentPadding = PaddingValues(0.dp),
-            interactionSource = interactionSource1,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 12.dp, pressedElevation = 4.dp)
+                .height(72.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 10.dp,
+                pressedElevation = 2.dp
+            )
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Brush.linearGradient(colors = listOf(Color(0xFFE53935), Color(0xFFB71C1C)))),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(28.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("SİNYAL ÇAK", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-            }
+            Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("SİNYAL ÇAK", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        val interactionSource2 = remember { MutableInteractionSource() }
-        val isPressed2 by interactionSource2.collectIsPressedAsState()
-        val buttonScale2 by animateFloatAsState(targetValue = if (isPressed2) 0.95f else 1f, label = "btn2_scale")
 
         Button(
             onClick = {
@@ -618,31 +391,23 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .scale(buttonScale2)
-                .shadow(elevation = 12.dp, shape = RoundedCornerShape(24.dp)),
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Color.White),
-            contentPadding = PaddingValues(0.dp),
-            interactionSource = interactionSource2,
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 12.dp, pressedElevation = 4.dp)
+                .height(72.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = Color.White
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 10.dp,
+                pressedElevation = 2.dp
+            )
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Brush.linearGradient(colors = listOf(Color(0xFF43A047), Color(0xFF1B5E20)))),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(28.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("BİLDİRİMLERİMİ TAKİP ET", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
+            Icon(Icons.Filled.Build, contentDescription = null, modifier = Modifier.size(28.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("BİLDİRİMLERİMİ TAKİP ET", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.weight(0.5f))
-
-        BannerAdView()
     }
 }
 
@@ -691,12 +456,8 @@ fun flashLightEffect(context: Context, coroutineScope: CoroutineScope) {
 @Composable
 fun HaritaEkrani(onComplete: () -> Unit) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        loadInterstitial(context)
-    }
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
-    var showSuccessDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // Anlık Konum
@@ -855,11 +616,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
 
         Button(
             onClick = {
-                val permissionsToRequest = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA)
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                permissionLauncher.launch(permissionsToRequest.toTypedArray())
+                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA))
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -875,47 +632,10 @@ fun HaritaEkrani(onComplete: () -> Unit) {
             Text("KONUMU SEÇ VE BİLDİR", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
-        if (showSuccessDialog) {
-            AlertDialog(
-                onDismissRequest = { showSuccessDialog = false },
-                title = {
-                    Text(
-                        text = "İşlem Başarılı",
-                        color = Color(0xFF388E3C), // Karşıyaka Yeşili
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Text("Sinyaliniz başarıyla iletildi! Ekiplerimiz en kısa sürede ilgilenecektir.")
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showSuccessDialog = false
-                            showInterstitial(context) {
-                                onComplete()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)) // Karşıyaka Kırmızısı
-                    ) {
-                        Text("Tamam", color = Color.White)
-                    }
-                }
-            )
-        }
-
         if (showSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showSheet = false },
-                sheetState = sheetState
-            ) {
+            ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 64.dp) // Klavye açılışı için ekstra tampon alan
-                        .imePadding()
-                        .verticalScroll(rememberScrollState()),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text("Detayları Bildir", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -1025,14 +745,6 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                         }
 
                                         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "anonim"
-
-                                        var fcmToken = ""
-                                        try {
-                                            fcmToken = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
-                                        } catch (e: Exception) {
-                                            Log.e("FCM", "Token alinmadi", e)
-                                        }
-
                                         val yeniSinyal = Sinyal(
                                             id = UUID.randomUUID().toString(),
                                             userId = userId,
@@ -1042,61 +754,14 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             telefon = telefon,
                                             adres = addressText,
                                             aciklama = yorum,
-                                            photoUri = uploadedImageUrl,
-                                            fcmToken = fcmToken
+                                            photoUri = uploadedImageUrl
                                         )
 
                                         FirebaseFirestore.getInstance().collection("sinyaller")
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
 
-                                        // Admine bildirim gonder
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            try {
-                                                val doc = FirebaseFirestore.getInstance()
-                                                    .collection("admin_config")
-                                                    .document("service_account")
-                                                    .get()
-                                                    .await()
-
-                                                val jsonString = doc.getString("json")
-                                                val projectId = FirebaseApp.getInstance().options.projectId
-
-                                                if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
-                                                    val accessToken = getAccessTokenFromServiceAccount(jsonString)
-
-                                                    val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
-                                                    val conn = url.openConnection() as HttpURLConnection
-                                                    conn.requestMethod = "POST"
-                                                    conn.setRequestProperty("Authorization", "Bearer $accessToken")
-                                                    conn.setRequestProperty("Content-Type", "application/json")
-                                                    conn.doOutput = true
-
-                                                    val messageObj = JSONObject()
-                                                    messageObj.put("topic", "admin_notifications")
-
-                                                    val notificationObj = JSONObject()
-                                                    notificationObj.put("title", "Yeni Bildirim Geldi")
-                                                    notificationObj.put("body", "$addressText bölgesinden yeni bir sorun bildirildi.")
-                                                    messageObj.put("notification", notificationObj)
-
-                                                    val rootObj = JSONObject()
-                                                    rootObj.put("message", messageObj)
-
-                                                    val writer = OutputStreamWriter(conn.outputStream)
-                                                    writer.write(rootObj.toString())
-                                                    writer.flush()
-                                                    writer.close()
-
-                                                    val responseCode = conn.responseCode
-                                                    Log.d("FCM_ADMIN", "Admin Response Code: $responseCode")
-                                                }
-                                            } catch (e: Exception) {
-                                                Log.e("FCM_ADMIN", "Admin bildirim hatasi", e)
-                                            }
-                                        }
-
-                                        showSuccessDialog = true
+                                        Toast.makeText(context, "Sinyal Çakıldı! Ekiplerimize iletildi.", Toast.LENGTH_LONG).show()
                                         flashLightEffect(context, coroutineScope)
                                         showSheet = false
                                         yorum = ""
@@ -1216,125 +881,20 @@ fun AdminEkrani() {
             .verticalScroll(rememberScrollState())
     ) {
         Text(
-            text = "Admin Paneli",
+            text = "Admin Paneli - Tüm Sinyaller",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Istatistik Karti
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .shadow(12.dp, RoundedCornerShape(20.dp)),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
-        ) {
-            Column(modifier = Modifier
-                .background(Brush.linearGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFF1F8E9))))
-                .padding(16.dp)
-            ) {
-                val toplam = tumSinyaller.size
-                val cozuldu = tumSinyaller.count { it.durum == "Çözüldü" }
-                val bekleyen = tumSinyaller.count { it.durum != "Çözüldü" }
-
-                val mahalleler = tumSinyaller.mapNotNull { sinyal ->
-                    val match = Regex("([\\w\\s]+? Mahallesi)").find(sinyal.adres)
-                    match?.value?.trim()
-                }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(3)
-
-                Text("📊 İstatistikler", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Toplam İhbar: $toplam", fontWeight = FontWeight.Medium)
-                    Text("Çözülen: $cozuldu", fontWeight = FontWeight.Medium, color = Color(0xFF388E3C))
-                }
-                Text("Bekleyen/İncelenen: $bekleyen", fontWeight = FontWeight.Medium, color = Color(0xFFD32F2F))
-
-                if (mahalleler.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("📍 En Çok Bildirim Gelen Mahalleler", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    mahalleler.forEach { (mahalle, adet) ->
-                        Text("• $mahalle ($adet)", fontSize = 13.sp)
-                    }
-                }
-            }
-        }
-
         tumSinyaller.forEach { sinyal ->
-            AdminBildirimKarti(
-                sinyal = sinyal,
-                onGuncelle = { id, durum, cevap ->
+            AdminBildirimKarti(sinyal = sinyal, onGuncelle = { id, durum, cevap ->
                 coroutineScope.launch {
                     try {
                         FirebaseFirestore.getInstance().collection("sinyaller").document(id)
                             .update(mapOf("durum" to durum, "adminCevap" to cevap)).await()
                         Toast.makeText(context, "Güncellendi", Toast.LENGTH_SHORT).show()
                         fetchSinyaller() // Listeyi yenile
-
-                        // Bildirim Gonderimi
-                        if (sinyal.fcmToken.isNotBlank()) {
-                            withContext(Dispatchers.IO) {
-                                try {
-                                    val doc = FirebaseFirestore.getInstance()
-                                        .collection("admin_config")
-                                        .document("service_account")
-                                        .get()
-                                        .await()
-
-                                    val jsonString = doc.getString("json")
-                                    val projectId = FirebaseApp.getInstance().options.projectId
-
-                                    if (!jsonString.isNullOrBlank() && !projectId.isNullOrBlank()) {
-                                        val accessToken = getAccessTokenFromServiceAccount(jsonString)
-
-                                        val url = URL("https://fcm.googleapis.com/v1/projects/$projectId/messages:send")
-                                        val conn = url.openConnection() as HttpURLConnection
-                                        conn.requestMethod = "POST"
-                                        conn.setRequestProperty("Authorization", "Bearer $accessToken")
-                                        conn.setRequestProperty("Content-Type", "application/json")
-                                        conn.doOutput = true
-
-                                        val messageObj = JSONObject()
-                                        messageObj.put("token", sinyal.fcmToken)
-
-                                        val notificationObj = JSONObject()
-                                        notificationObj.put("title", "Sinyal Durumu Güncellendi")
-                                        notificationObj.put("body", "Bildiriminizin durumu '$durum' olarak güncellendi.")
-                                        messageObj.put("notification", notificationObj)
-
-                                        val rootObj = JSONObject()
-                                        rootObj.put("message", messageObj)
-
-                                        val writer = OutputStreamWriter(conn.outputStream)
-                                        writer.write(rootObj.toString())
-                                        writer.flush()
-                                        writer.close()
-
-                                        val responseCode = conn.responseCode
-                                        val responseMessage = conn.responseMessage
-                                        Log.d("FCM_SEND", "HTTP v1 Response Code: $responseCode, Msg: $responseMessage")
-                                    } else {
-                                        Log.e("FCM_SEND", "Service Account JSON veya Project ID eksik.")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("FCM_SEND", "Bildirim gonderme hatasi", e)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            },
-            onSil = { id ->
-                coroutineScope.launch {
-                    try {
-                        FirebaseFirestore.getInstance().collection("sinyaller").document(id).delete().await()
-                        Toast.makeText(context, "Bildirim Silindi", Toast.LENGTH_SHORT).show()
-                        fetchSinyaller()
                     } catch (e: Exception) {
                         Toast.makeText(context, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
@@ -1345,9 +905,7 @@ fun AdminEkrani() {
 }
 
 @Composable
-fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> Unit, onSil: (String) -> Unit) {
-    var isExpanded by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> Unit) {
     var cevap by remember(sinyal.adminCevap) { mutableStateOf(sinyal.adminCevap) }
     var seciliDurum by remember(sinyal.durum) { mutableStateOf(sinyal.durum) }
     val durumlar = listOf("İnceleniyor", "Bildirildi", "Çözüldü")
@@ -1355,65 +913,14 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clickable(onClick = { isExpanded = !isExpanded })
-            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
-        shape = RoundedCornerShape(16.dp),
+            .padding(vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        if (!isExpanded) {
-            val dateStr = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault()).format(Date(sinyal.timestamp))
-            val adSoyad = sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("$dateStr - $adSoyad", fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(8.dp))
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = when (sinyal.durum) {
-                        "Çözüldü" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                        "Bildirildi" -> Color(0xFF03A9F4).copy(alpha = 0.2f)
-                        else -> Color(0xFFFFA000).copy(alpha = 0.2f)
-                    }
-                ) {
-                    Text(
-                        text = sinyal.durum,
-                        color = when (sinyal.durum) {
-                            "Çözüldü" -> Color(0xFF4CAF50)
-                            "Bildirildi" -> Color(0xFF03A9F4)
-                            else -> Color(0xFFFFA000)
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        } else {
-            Column(modifier = Modifier
-                .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
-                .padding(16.dp)
-            ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    val dateStr = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(sinyal.timestamp))
-                    Text("Tarih: $dateStr", fontSize = 12.sp, color = Color.Gray)
-
-                    IconButton(onClick = { showDeleteDialog = true }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Sil", tint = Color(0xFFD32F2F))
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text("Bildiren: ${sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text("Telefon: ${sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontSize = 14.sp)
-                Spacer(modifier = Modifier.height(4.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Bildiren: ${sinyal.isimSoyisim.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("Telefon: ${sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"}", fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(4.dp))
 
             val konumMetni = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
             Text("Adres: $konumMetni", fontSize = 13.sp, color = Color.DarkGray)
@@ -1470,7 +977,7 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                                 val tel = sinyal.telefon.takeIf { it.isNotBlank() } ?: "Bilinmiyor"
                                 val adres = if (sinyal.adres.isNotBlank()) sinyal.adres else "${sinyal.lat}, ${sinyal.lng}"
 
-                                val mesaj = "🚨 *YENİ BİLDİRİM* 🚨\n\n" +
+                                val mesaj = "🚨 *YENİ İHBAR* 🚨\n\n" +
                                         "👤 *Bildiren:* $adSoyad\n" +
                                         "📞 *Telefon:* $tel\n" +
                                         "📍 *Adres:* $adres\n" +
@@ -1529,31 +1036,6 @@ fun AdminBildirimKarti(sinyal: Sinyal, onGuncelle: (String, String, String) -> U
                 }
             }
         }
-        }
-
-        if (showDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Bildirimi Sil", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F)) },
-                text = { Text("Bu bildirimi kalıcı olarak silmek istediğinizden emin misiniz?") },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showDeleteDialog = false
-                            onSil(sinyal.id)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
-                    ) {
-                        Text("Evet, Sil", color = Color.White)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("İptal")
-                    }
-                }
-            )
-        }
     }
 }
 
@@ -1562,17 +1044,12 @@ fun BildirimKarti(konum: String, sorun: String, durum: String, adminMesaji: Stri
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
-        shape = RoundedCornerShape(16.dp),
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier
-            .background(Brush.linearGradient(colors = listOf(Color(0xFFFFFFFF), Color(0xFFF5F5F5))))
-            .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

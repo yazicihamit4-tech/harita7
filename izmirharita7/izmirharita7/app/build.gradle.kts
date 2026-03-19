@@ -41,16 +41,6 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
-
-    packaging {
-        resources {
-            excludes += "META-INF/DEPENDENCIES"
-        }
-    }
-
-    lint {
-        checkReleaseBuilds = false
-    }
 }
 
 // KRİTİK DÜZELTME: Başka kütüphanelerin gizlice API 36 (1.17.0) istemesini engeller
@@ -83,13 +73,9 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.firebase:firebase-messaging")
     implementation(libs.google.firebase.auth)
     implementation(libs.play.services.auth)
     implementation(libs.coil.compose)
-
-    // --- ADMOB ---
-    implementation("com.google.android.gms:play-services-ads:23.0.0")
 
     // --- TEST VE DEBUG ---
     testImplementation(libs.junit)
