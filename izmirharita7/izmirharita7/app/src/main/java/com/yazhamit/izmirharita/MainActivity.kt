@@ -323,10 +323,10 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Karşıyaka 3D Görseli
+        // Karşıyaka Belediye İşçisi Görseli
         androidx.compose.foundation.Image(
-            painter = painterResource(id = R.drawable.karsiyaka_scene),
-            contentDescription = "Karşıyaka 3D Görsel",
+            painter = painterResource(id = R.drawable.belediye_iscisi),
+            contentDescription = "Karşıyaka Belediyesi İşçisi",
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
