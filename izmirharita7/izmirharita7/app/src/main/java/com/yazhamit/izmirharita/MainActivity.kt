@@ -323,16 +323,54 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Karşıyaka Belediye İşçisi Görseli
-        androidx.compose.foundation.Image(
-            painter = painterResource(id = R.drawable.belediye_iscisi),
-            contentDescription = "Karşıyaka Belediyesi İşçisi",
+        // 4 Aşamalı 3D Figürler (Sorun -> Bildirim -> Çözüm -> Mutlu Son)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
                 .padding(bottom = 16.dp),
-            contentScale = ContentScale.Crop
-        )
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.sorun),
+                    contentDescription = "Sorun",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Sorun", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.bildirim),
+                    contentDescription = "Bildirim",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Bildirim", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.cozum),
+                    contentDescription = "Çözüm",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Çözüm", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.mutlu_son),
+                    contentDescription = "Mutlu Son",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Mutlu Son", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
 
         Spacer(modifier = Modifier.weight(0.2f))
         Text(
