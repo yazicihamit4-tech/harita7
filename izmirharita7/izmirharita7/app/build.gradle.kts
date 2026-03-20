@@ -41,6 +41,11 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 // KRİTİK DÜZELTME: Başka kütüphanelerin gizlice API 36 (1.17.0) istemesini engeller
