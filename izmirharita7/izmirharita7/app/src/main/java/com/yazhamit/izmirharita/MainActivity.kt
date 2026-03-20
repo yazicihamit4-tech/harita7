@@ -29,7 +29,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -321,26 +323,18 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.weight(0.5f))
+        // Karşıyaka 3D Görseli
+        androidx.compose.foundation.Image(
+            painter = painterResource(id = R.drawable.karsiyaka_scene),
+            contentDescription = "Karşıyaka 3D Görsel",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(bottom = 16.dp),
+            contentScale = ContentScale.Crop
+        )
 
-        // Tematik bir arkaya sahip estetik logo kutusu
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-            shadowElevation = 0.dp
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    imageVector = Icons.Filled.Place,
-                    contentDescription = "İzmir Logo",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(80.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.weight(0.2f))
         Text(
             text = "SİNYAL 35.5",
             style = MaterialTheme.typography.displayMedium,
