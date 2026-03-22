@@ -23,12 +23,15 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -320,26 +323,56 @@ fun LobiEkrani(isLoggedIn: Boolean, onNavigateToHarita: () -> Unit, onNavigateTo
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.weight(0.5f))
-
-        // Tematik bir arkaya sahip estetik logo kutusu
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-            shadowElevation = 0.dp
+        // 4 Aşamalı 3D Figürler (Sorun -> Bildirim -> Çözüm -> Mutlu Son)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    imageVector = Icons.Filled.Place,
-                    contentDescription = "İzmir Logo",
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(80.dp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.sorun),
+                    contentDescription = "Sorun",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
                 )
+                Text("Sorun", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.bildirim),
+                    contentDescription = "Bildirim",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Bildirim", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.cozum),
+                    contentDescription = "Çözüm",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Çözüm", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.mutlu_son),
+                    contentDescription = "Mutlu Son",
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(4.dp),
+                    contentScale = ContentScale.Crop
+                )
+                Text("Mutlu Son", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.weight(0.2f))
         Text(
             text = "SİNYAL 35.5",
             style = MaterialTheme.typography.displayMedium,
@@ -480,6 +513,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
     var addressText by remember { mutableStateOf("Adres tespit ediliyor...") }
     var isAddressResolved by remember { mutableStateOf(false) }
     var failedAddressRetries by remember { mutableStateOf(0) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val karsiyakaMerkez = LatLng(38.4552, 27.1235)
@@ -769,7 +803,7 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                                             .document(yeniSinyal.id)
                                             .set(yeniSinyal).await()
 
-                                        Toast.makeText(context, "Sinyal Çakıldı! Ekiplerimize iletildi.", Toast.LENGTH_LONG).show()
+                                        showSuccessDialog = true
                                         flashLightEffect(context, coroutineScope)
                                         showSheet = false
                                         yorum = ""
@@ -797,6 +831,32 @@ fun HaritaEkrani(onComplete: () -> Unit) {
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        if (showSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = { showSuccessDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = "Başarılı", tint = Color(0xFF388E3C), modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sinyal Alındı!", color = Color(0xFF388E3C), fontWeight = FontWeight.Bold)
+                    }
+                },
+                text = {
+                    Text("Bildiriminiz başarıyla ekiplerimize iletilmiştir. Karşıyaka için katkılarınızdan dolayı teşekkür ederiz.", color = Color.DarkGray)
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showSuccessDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                    ) {
+                        Text("Kapat", color = Color.White)
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

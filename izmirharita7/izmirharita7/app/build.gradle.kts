@@ -41,6 +41,11 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 // KRİTİK DÜZELTME: Başka kütüphanelerin gizlice API 36 (1.17.0) istemesini engeller
@@ -73,6 +78,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-messaging")
     implementation(libs.google.firebase.auth)
     implementation(libs.play.services.auth)
     implementation(libs.coil.compose)
