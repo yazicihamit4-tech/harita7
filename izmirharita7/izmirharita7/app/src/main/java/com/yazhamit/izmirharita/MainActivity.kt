@@ -633,9 +633,17 @@ fun HaritaEkrani(onComplete: () -> Unit) {
         }
 
         if (showSheet) {
-            ModalBottomSheet(onDismissRequest = { showSheet = false }, sheetState = sheetState) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 64.dp) // Klavye açılışı için ekstra tampon alan
+                        .imePadding()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text("Detayları Bildir", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
